@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"    # Main port - all AWS services accessible here
+    environment:
+      # SERVICES: Which fake AWS services to run
+      - SERVICES=lambda,s3,dynamodb,apigateway,cloudwatch,logs,iam,events,cloudformation
+      - DEBUG=1
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "localstack_data:/var/lib/localstack"
+
+volumes:
+  localstack_data:
