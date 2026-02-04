@@ -1,0 +1,17 @@
+{
+  "name": "car-chargers-map",
+  "version": "1.0.0",
+  "description": "EV charger map using Lambda, DynamoDB, and Leaflet",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "deploy-web": "awslocal s3 sync ./web s3://chargers-website"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.540.0",
+    "@aws-sdk/lib-dynamodb": "^3.540.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-localstack": "^1.2.0"
+  }
+}
