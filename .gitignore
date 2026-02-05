@@ -1,0 +1,23 @@
+# Dependencies (downloaded by npm install)
+node_modules/
+
+# Serverless deployment artifacts
+.serverless/
+
+# AWS CLI binary (download separately)
+aws/
+
+# LocalStack data
+.localstack/
+localstack_data/
+
+# Zip files (Lambda packages)
+*.zip
+
+# Environment files (may contain secrets)
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
