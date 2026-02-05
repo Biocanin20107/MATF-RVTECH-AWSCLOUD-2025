@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charger Map</title>
+
+    <!-- Leaflet CSS - the map library's styles -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        /* Header with search controls */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            margin-right: 20px;
+        }
+
+        .header input {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 200px;
+        }
+
+        .header button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .header button:hover {
+            background: #f0f0f0;
+        }
+
+        .status {
+            margin-left: auto;
+            font-size: 14px;
+        }
+
+        /* Map container - takes remaining space */
+        #map {
+            height: calc(100vh - 80px);
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ EV Chargers</h1>
+        <input type="text" id="townInput" placeholder="Enter town..." value="Belgrade">
+        <button onclick="searchChargers()">Search</button>
+        <button onclick="syncData()">Sync Data</button>
+        <span class="status" id="status">Ready</span>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS - the map library -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // =====================================================================
+        // CONFIGURATION - Update this after deploying!
+        // =====================================================================
+        // After running 'npx serverless deploy', look for the API Gateway URL
+        // in the output and paste the API_ID here.
+        //
+        // Example output:
+        //   endpoints:
+        //     GET - http://localhost:4566/restapis/abc123xyz/dev/_user_request_/sync
+        //                                          ^^^^^^^^^ this is the API_ID
+        //
+        const API_ID = "rpft6nyvs3";  // Your LocalStack API ID
+        const API_BASE = `http://localhost:4566/restapis/${API_ID}/dev/_user_request_`;
+
+        // =====================================================================
+        // MAP SETUP
+        // =====================================================================
+        // Initialize map centered on Serbia
+        const map = L.map('map').setView([44.0165, 21.0059], 7);
+
+        // Add OpenStreetMap tiles (the actual map images)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Layer to hold charger markers (so we can clear them on new search)
+        let markersLayer = L.layerGroup().addTo(map);
+
+        // Custom icon for chargers
+        const chargerIcon = L.divIcon({
+            html: '⚡',
+            className: 'charger-icon',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        // =====================================================================
+        // SEARCH CHARGERS - Called when user clicks "Search"
+        // =====================================================================
+        async function searchChargers() {
+            const town = document.getElementById('townInput').value.trim();
+            if (!town) {
+                setStatus('Please enter a town name');
+                return;
+            }
+
+            setStatus(`Searching for chargers in ${town}...`);
+
+            try {
+                // Call your API: GET /chargers/{town}
+                const url = `${API_BASE}/chargers/${encodeURIComponent(town)}`;
+                console.log('Fetching:', url);
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'API error');
+                }
+
+                // Clear old markers
+                markersLayer.clearLayers();
+
+                // Add new markers
+                const bounds = [];
+                data.chargers.forEach(charger => {
+                    if (charger.latitude && charger.longitude) {
+                        const marker = L.marker(
+                            [charger.latitude, charger.longitude],
+                            { icon: chargerIcon }
+                        );
+
+                        // Popup with charger info
+                        marker.bindPopup(`
+                            <strong>${charger.title}</strong><br>
+                            ${charger.addressLine1}<br>
+                            ${charger.town}, ${charger.postcode}<br>
+                            <hr>
+                            Charging points: ${charger.numberOfPoints}<br>
+                            Verified: ${charger.isRecentlyVerified ? 'Yes' : 'No'}
+                        `);
+
+                        marker.addTo(markersLayer);
+                        bounds.push([charger.latitude, charger.longitude]);
+                    }
+                });
+
+                // Zoom map to show all markers
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+
+                setStatus(`Found ${data.count} chargers in ${town}`);
+            } catch (error) {
+                console.error('Search failed:', error);
+                setStatus(`Error: ${error.message}`);
+            }
+        }
+
+        // =====================================================================
+        // SYNC DATA - Called when user clicks "Sync Data"
+        // =====================================================================
+        async function syncData() {
+            setStatus('Syncing data from Open Charge Map...');
+
+            try {
+                const url = `${API_BASE}/sync`;
+                console.log('Syncing:', url);
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Sync failed');
+                }
+
+                setStatus(`Sync complete! ${data.savedToDatabase} chargers saved.`);
+            } catch (error) {
+                console.error('Sync failed:', error);
+                setStatus(`Sync error: ${error.message}`);
+            }
+        }
+
+        // =====================================================================
+        // HELPER: Update status message
+        // =====================================================================
+        function setStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+    </script>
+
+    <style>
+        /* Custom marker style */
+        .charger-icon {
+            font-size: 24px;
+            text-align: center;
+            line-height: 30px;
+        }
+    </style>
+</body>
+</html>
