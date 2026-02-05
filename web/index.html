@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Charger Map</title>
 
-    <!-- Leaflet CSS - the map library's styles -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
@@ -19,7 +18,6 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Header with search controls */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -95,24 +93,17 @@
         //     GET - http://localhost:4566/restapis/abc123xyz/dev/_user_request_/sync
         //                                          ^^^^^^^^^ this is the API_ID
         //
-        const API_ID = "rpft6nyvs3";  // Your LocalStack API ID
+        const API_ID = "3htbqqqvka";  // Your LocalStack API ID
         const API_BASE = `http://localhost:4566/restapis/${API_ID}/dev/_user_request_`;
 
-        // =====================================================================
-        // MAP SETUP
-        // =====================================================================
-        // Initialize map centered on Serbia
         const map = L.map('map').setView([44.0165, 21.0059], 7);
 
-        // Add OpenStreetMap tiles (the actual map images)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Layer to hold charger markers (so we can clear them on new search)
         let markersLayer = L.layerGroup().addTo(map);
 
-        // Custom icon for chargers
         const chargerIcon = L.divIcon({
             html: '⚡',
             className: 'charger-icon',
@@ -120,9 +111,6 @@
             iconAnchor: [15, 15]
         });
 
-        // =====================================================================
-        // SEARCH CHARGERS - Called when user clicks "Search"
-        // =====================================================================
         async function searchChargers() {
             const town = document.getElementById('townInput').value.trim();
             if (!town) {
@@ -133,7 +121,6 @@
             setStatus(`Searching for chargers in ${town}...`);
 
             try {
-                // Call your API: GET /chargers/{town}
                 const url = `${API_BASE}/chargers/${encodeURIComponent(town)}`;
                 console.log('Fetching:', url);
 
@@ -144,10 +131,8 @@
                     throw new Error(data.error || 'API error');
                 }
 
-                // Clear old markers
                 markersLayer.clearLayers();
 
-                // Add new markers
                 const bounds = [];
                 data.chargers.forEach(charger => {
                     if (charger.latitude && charger.longitude) {
@@ -156,7 +141,6 @@
                             { icon: chargerIcon }
                         );
 
-                        // Popup with charger info
                         marker.bindPopup(`
                             <strong>${charger.title}</strong><br>
                             ${charger.addressLine1}<br>
@@ -171,7 +155,6 @@
                     }
                 });
 
-                // Zoom map to show all markers
                 if (bounds.length > 0) {
                     map.fitBounds(bounds, { padding: [50, 50] });
                 }
@@ -183,9 +166,6 @@
             }
         }
 
-        // =====================================================================
-        // SYNC DATA - Called when user clicks "Sync Data"
-        // =====================================================================
         async function syncData() {
             setStatus('Syncing data from Open Charge Map...');
 
@@ -207,16 +187,12 @@
             }
         }
 
-        // =====================================================================
-        // HELPER: Update status message
-        // =====================================================================
         function setStatus(message) {
             document.getElementById('status').textContent = message;
         }
     </script>
 
     <style>
-        /* Custom marker style */
         .charger-icon {
             font-size: 24px;
             text-align: center;
