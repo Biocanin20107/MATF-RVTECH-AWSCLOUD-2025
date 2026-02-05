@@ -1,44 +1,19 @@
-# =============================================================================
-# SERVERLESS.YML - The Blueprint for Your Entire Backend
-# =============================================================================
-#
-# This file defines:
-#   1. Lambda functions (your backend code)
-#   2. API Gateway endpoints (URLs that trigger Lambda)
-#   3. DynamoDB tables (your database)
-#   4. S3 buckets (for hosting the website)
-#
-# HOW TO USE:
-#   npx serverless deploy   ← Creates everything defined below
-#
-# =============================================================================
-
 service: car-chargers
 frameworkVersion: "3"
 
-# -----------------------------------------------------------------------------
-# PROVIDER: Where to deploy (AWS) and runtime settings
-# -----------------------------------------------------------------------------
 provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
 
-  # Environment variables available to ALL Lambda functions
   environment:
     CHARGERS_TABLE: Chargers
-    OCM_API_KEY: "69d86e58-df21-406b-b837-cc07c35ddd41"  # Open Charge Map API key
+    OCM_API_KEY: "69d86e58-df21-406b-b837-cc07c35ddd41"
     OCM_URL: "https://api.openchargemap.io/v3/poi"
 
-# -----------------------------------------------------------------------------
-# PLUGINS: Extensions for Serverless Framework
-# -----------------------------------------------------------------------------
 plugins:
-  - serverless-localstack   # Allows deploying to LocalStack instead of real AWS
+  - serverless-localstack
 
-# -----------------------------------------------------------------------------
-# CUSTOM: LocalStack configuration
-# -----------------------------------------------------------------------------
 custom:
   localstack:
     stages:
@@ -47,70 +22,52 @@ custom:
     host: http://localhost
     edgePort: 4566
 
-# -----------------------------------------------------------------------------
-# FUNCTIONS: Your Lambda functions + their triggers
-# -----------------------------------------------------------------------------
-#
-# Each function:
-#   - handler: Points to your code (file.functionName)
-#   - events: What triggers this function (HTTP request, schedule, etc.)
-#
 functions:
 
-  # FUNCTION 1: Sync chargers from Open Charge Map API → DynamoDB
   syncChargers:
     handler: handlers/syncChargers.handler
-    timeout: 30  # seconds (API calls can be slow)
+    timeout: 30
     events:
       - http:
           path: /sync
           method: get
-          cors: true   # Allow browser to call this
+          cors: true 
 
-  # FUNCTION 2: Get chargers by town from DynamoDB
   getChargers:
     handler: handlers/getChargers.handler
     events:
       - http:
-          path: /chargers/{town}    # {town} is a variable, e.g., /chargers/Belgrade
+          path: /chargers/{town} 
           method: get
           cors: true
 
-# -----------------------------------------------------------------------------
-# RESOURCES: AWS resources to create (DynamoDB, S3, etc.)
-# -----------------------------------------------------------------------------
 resources:
   Resources:
 
-    # DynamoDB Table: Stores all charger data
     ChargersTable:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: Chargers
-        BillingMode: PAY_PER_REQUEST   # No need to provision capacity
+        BillingMode: PAY_PER_REQUEST
 
-        # Define the columns used for keys/indexes
         AttributeDefinitions:
-          - AttributeName: chargerId   # Primary key
-            AttributeType: S           # S = String
-          - AttributeName: town        # For querying by city
+          - AttributeName: chargerId
+            AttributeType: S
+          - AttributeName: town
             AttributeType: S
 
-        # Primary key
         KeySchema:
           - AttributeName: chargerId
-            KeyType: HASH              # HASH = partition key
+            KeyType: HASH
 
-        # Secondary index: Allows efficient queries by town
         GlobalSecondaryIndexes:
           - IndexName: TownIndex
             KeySchema:
               - AttributeName: town
                 KeyType: HASH
             Projection:
-              ProjectionType: ALL      # Include all fields in index
+              ProjectionType: ALL
 
-    # S3 Bucket: Hosts your frontend website
     WebsiteBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -122,8 +79,7 @@ resources:
           BlockPublicPolicy: false
           IgnorePublicAcls: false
           RestrictPublicBuckets: false
-
-    # Bucket Policy: Makes the website publicly readable
+=
     WebsiteBucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
